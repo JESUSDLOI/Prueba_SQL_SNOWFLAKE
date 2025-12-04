@@ -1,4 +1,4 @@
-''
+
         CREATE OR REPLACE TEMPORARY TABLE temp_transformacion_user_fct_'' || env || '' AS (
         
                                 
@@ -8,4 +8,3 @@
  
         )
 
-''
