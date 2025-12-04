@@ -93,40 +93,6 @@ BEGIN
         )
         '';
 
-    -- Construye las cláusulas para el MERGE
-    -- Para evitar tener que llamar SHOW COLUMNS cada vez que asigna valores a las cláusulas, primero crea una tabla intermedia
-    EXECUTE IMMEDIATE ''SHOW COLUMNS IN TABLE temp_transformacion_USER_fct_'' || env || '''';
-    EXECUTE IMMEDIATE ''CREATE OR REPLACE TEMPORARY TABLE temp_columns_USER_fct_'' || env || '' AS SELECT * FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))'';
-
-        -- Cláusula para el UPDATE
-        EXECUTE IMMEDIATE ''
-            SELECT LISTAGG(''''gold.'''' || "column_name" || '''' = silver.'''' || "column_name", '''', '''') 
-            WITHIN GROUP (ORDER BY "column_name")       -- Las columnas deben aparecer en el mismo orden
-            FROM temp_columns_USER_fct_'' || env || ''
-        '';
-        SELECT *
-        INTO :update_clause
-        FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
-
-        -- Cláusula para el INSERT
-        EXECUTE IMMEDIATE ''
-            SELECT LISTAGG("column_name", '''', '''') 
-            WITHIN GROUP (ORDER BY "column_name")       -- Las columnas deben aparecer en el mismo orden
-            FROM temp_columns_USER_fct_'' || env || ''
-        '';
-        SELECT *
-        INTO :insert_clause
-        FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
-
-        -- Cláusula para el VALUES
-        EXECUTE IMMEDIATE ''
-            SELECT LISTAGG(''''silver.'''' || "column_name", '''', '''') 
-            WITHIN GROUP (ORDER BY "column_name")       -- Las columnas deben aparecer en el mismo orden 
-            FROM temp_columns_USER_fct_'' || env || '' 
-        '';
-        SELECT *
-        INTO :values_clause
-        FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
 
     -- Realiza el MERGE
     merge_sql := ''
@@ -135,11 +101,10 @@ BEGIN
         ON silver.COLUMNA_1 = gold.COLUMNA_1
         
         WHEN MATCHED THEN 
-            UPDATE SET '' || update_clause || ''
+            UPDATE ALL BY NAME
 
         WHEN NOT MATCHED THEN
-            INSERT ('' || insert_clause || '')
-            VALUES ('' || values_clause || '')
+            INSERT ALL BY NAME
     '';
     
     -- Si se ejecuta en modo full-refresh, se abre una transacción explícita que trunca la tabla y solo commitea si el MERGE tuvo éxito.
