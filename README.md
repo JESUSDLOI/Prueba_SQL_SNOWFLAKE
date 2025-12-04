@@ -1,0 +1,1 @@
+# Prueba_SQL_SNOWFLAKE
